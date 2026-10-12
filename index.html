@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e27">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Hava Durumu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --glass: rgba(255,255,255,0.10);
+    --glass-strong: rgba(255,255,255,0.16);
+    --glass-border: rgba(255,255,255,0.20);
+    --text: #ffffff;
+    --text-dim: rgba(255,255,255,0.75);
+    --text-mute: rgba(255,255,255,0.55);
+    --shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    transition: background 1.5s ease;
+    background: #1e3a8a;
+  }
+
+  /* ============================================================
+     ARKA PLAN — HAVAYA GÖRE DEĞİŞİR
+  ============================================================ */
+  #bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    transition: background 1.8s ease;
+    background: linear-gradient(160deg, #1e3a8a 0%, #312e81 50%, #1e293b 100%);
+  }
+
+  /* Havaya göre arka plan sınıfları */
+  body[data-weather="clear-day"]      #bg { background: linear-gradient(160deg, #38bdf8 0%, #0ea5e9 40%, #6366f1 100%); }
+  body[data-weather="clear-night"]    #bg { background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%); }
+  body[data-weather="cloudy"]         #bg { background: linear-gradient(160deg, #64748b 0%, #475569 50%, #334155 100%); }
+  body[data-weather="rain"]           #bg { background: linear-gradient(160deg, #1e293b 0%, #0f172a 60%, #020617 100%); }
+  body[data-weather="storm"]          #bg { background: linear-gradient(160deg, #18181b 0%, #0f172a 50%, #1e1b4b 100%); }
+  body[data-weather="snow"]           #bg { background: linear-gradient(160deg, #cbd5e1 0%, #94a3b8 50%, #64748b 100%); color: #0f172a; }
+  body[data-weather="fog"]            #bg { background: linear-gradient(160deg, #78716c 0%, #57534e 50%, #44403c 100%); }
+  body[data-weather="sunset"]         #bg { background: linear-gradient(160deg, #fb923c 0%, #ec4899 50%, #7c3aed 100%); }
+
+  /* Güneş efekti (açık havada) */
+  body[data-weather="clear-day"] #bg::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(255,237,160,0.85) 0%, rgba(255,237,160,0.3) 40%, transparent 70%);
+    border-radius: 50%;
+    animation: sunPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes sunPulse {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50%      { transform: scale(1.15); opacity: 1; }
+  }
+
+  /* Ay efekti (gece açık havada) */
+  body[data-weather="clear-night"] #bg::before {
+    content: '';
+    position: absolute;
+    top: 8%;
+    right: 12%;
+    width: 90px;
+    height: 90px;
+    background: radial-gradient(circle at 30% 30%, #fef9c3, #fde047 60%, transparent 75%);
+    border-radius: 50%;
+    box-shadow: 0 0 60px rgba(253,224,71,0.4);
+    animation: moonGlow 4s ease-in-out infinite;
+  }
+
+  @keyframes moonGlow {
+    0%, 100% { box-shadow: 0 0 60px rgba(253,224,71,0.4); }
+    50%      { box-shadow: 0 0 90px rgba(253,224,71,0.6); }
+  }
+
+  /* Yıldızlar (gece) */
+  body[data-weather="clear-night"] #bg::after,
+  body[data-weather="storm"] #bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, white, transparent),
+      radial-gradient(1px 1px at 60% 20%, white, transparent),
+      radial-gradient(1.5px 1.5px at 80% 60%, white, transparent),
+      radial-gradient(1px 1px at 40% 70%, white, transparent),
+      radial-gradient(1px 1px at 10% 80%, white, transparent),
+      radial-gradient(1.5px 1.5px at 90% 30%, white, transparent),
+      radial-gradient(1px 1px at 30% 50%, white, transparent),
+      radial-gradient(1px 1px at 70% 85%, white, transparent);
+    opacity: 0.7;
+    animation: twinkle 4s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 0.35; }
+  }
+
+  /* Yağmur animasyonu */
+  body[data-weather="rain"] #bg::before,
+  body[data-weather="storm"] #bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(transparent 0%, rgba(255,255,255,0.35) 100%),
+      linear-gradient(transparent 0%, rgba(255,255,255,0.25) 100%),
+      linear-gradient(transparent 0%, rgba(255,255,255,0.30) 100%),
+      linear-gradient(transparent 0%, rgba(255,255,255,0.20) 100%);
+    background-size: 2px 80px, 1px 60px, 2px 100px, 1px 70px;
+    background-position: 20% -80px, 45% -60px, 70% -100px, 85% -70px;
+    background-repeat: repeat-y;
+    animation: rain 0.6s linear infinite;
+    opacity: 0.6;
+  }
+
+  @keyframes rain {
+    from { background-position: 20% -80px, 45% -60px, 70% -100px, 85% -70px; }
+    to   { background-position: 20% 100vh, 45% 100vh, 70% 100vh, 85% 100vh; }
+  }
+
+  /* Kar animasyonu */
+  body[data-weather="snow"] #bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(2px 2px at 20% 20%, white, transparent),
+      radial-gradient(2px 2px at 60% 40%, white, transparent),
+      radial-gradient(3px 3px at 80% 60%, white, transparent),
+      radial-gradient(2px 2px at 30% 80%, white, transparent),
+      radial-gradient(2px 2px at 70% 10%, white, transparent);
+    background-size: 200px 200px, 300px 300px, 400px 400px, 250px 250px, 350px 350px;
+    animation: snow 10s linear infinite;
+  }
+
+  @keyframes snow {
+    from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 0 100vh, 0 100vh, 0 100vh, 0 100vh, 0 100vh; }
+  }
+
+  /* Bulutlu hava - yumuşak bulutlar */
+  body[data-weather="cloudy"] #bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 300px 100px at 20% 25%, rgba(255,255,255,0.15), transparent),
+      radial-gradient(ellipse 400px 120px at 70% 20%, rgba(255,255,255,0.12), transparent),
+      radial-gradient(ellipse 350px 110px at 40% 60%, rgba(255,255,255,0.10), transparent);
+    animation: clouds 30s ease-in-out infinite;
+  }
+
+  @keyframes clouds {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(30px); }
+  }
+
+  /* ============================================================
+     HEADER
+  ============================================================ */
+  header {
+    padding: calc(env(safe-area-inset-top) + 20px) 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 620px;
+    margin: 0 auto;
+    animation: slideDown .7s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .brand .logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #38bdf8, #6366f1, #ec4899);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+  }
+
+  header .spacer { flex: 1; }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    font-size: 17px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform .2s, background .3s;
+  }
+  .icon-btn:active { transform: scale(0.9); }
+
+  /* ============================================================
+     ANA İÇERİK
+  ============================================================ */
+  main {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 0 20px calc(env(safe-area-inset-bottom) + 40px);
+    display: grid;
+    gap: 16px;
+  }
+
+  /* Şehir arama */
+  .search-wrap {
+    position: relative;
+    animation: fadeUp .8s .05s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 14px 44px 14px 44px;
+    border-radius: 16px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 500;
+    outline: none;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: background .3s, border-color .3s;
+  }
+  .search-input::placeholder { color: var(--text-mute); }
+  .search-input:focus {
+    background: var(--glass-strong);
+    border-color: rgba(255,255,255,0.4);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--text-mute);
+    pointer-events: none;
+  }
+
+  .search-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #38bdf8, #6366f1);
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+    transition: transform .15s;
+  }
+  .search-btn:active { transform: translateY(-50%) scale(0.9); }
+
+  /* Şehir önerileri */
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: rgba(15,23,42,0.95);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
+    z-index: 100;
+    display: none;
+    box-shadow: var(--shadow);
+  }
+  .suggestions.active { display: block; }
+  .suggestion {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: background .2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .suggestion:last-child { border-bottom: none; }
+  .suggestion:hover, .suggestion:active {
+    background: rgba(99,102,241,0.25);
+  }
+  .suggestion .country {
+    color: var(--text-mute);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* ============================================================
+     ANA HAVA KARTI
+  ============================================================ */
+  .hero {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    padding: 26px 22px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp .8s .1s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .location {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+  }
+
+  .location .pin { font-size: 14px; }
+
+  .time-now {
+    font-size: 11px;
+    color: var(--text-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+
+  .weather-icon-big {
+    font-size: 90px;
+    line-height: 1;
+    margin: 6px 0 14px;
+    display: inline-block;
+    animation: floatIcon 4s ease-in-out infinite;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.3));
+  }
+
+  @keyframes floatIcon {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50%      { transform: translateY(-10px) rotate(2deg); }
+  }
+
+  .temp-big {
+    font-size: 82px;
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    margin: 0;
+    background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.65) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-feature-settings: "tnum";
+    text-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  }
+  .temp-big .deg {
+    font-size: 42px;
+    font-weight: 300;
+    vertical-align: top;
+    -webkit-text-fill-color: rgba(255,255,255,0.85);
+  }
+
+  .condition-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 8px 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .feels-like {
+    font-size: 13px;
+    color: var(--text-mute);
+    font-weight: 500;
+  }
+
+  /* ============================================================
+     DETAY GRID
+  ============================================================ */
+  .details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    animation: fadeUp .8s .2s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .detail-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 14px 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: transform .2s, background .3s;
+  }
+  .detail-card:active { transform: scale(0.98); }
+
+  .detail-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.10);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .detail-info { min-width: 0; flex: 1; }
+  .detail-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-mute);
+    margin-bottom: 3px;
+  }
+  .detail-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    font-feature-settings: "tnum";
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ============================================================
+     SAATLİK TAHMİN
+  ============================================================ */
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-mute);
+    margin: 10px 4px -4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeUp .8s .3s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .section-title::before {
+    content: '';
+    width: 3px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #38bdf8, #6366f1);
+  }
+
+  .hourly-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 4px 2px 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    animation: fadeUp .8s .3s cubic-bezier(.2,.8,.2,1) both;
+    scrollbar-width: none;
+  }
+  .hourly-scroll::-webkit-scrollbar { display: none; }
+
+  .hour-card {
+    flex: 0 0 78px;
+    scroll-snap-align: start;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 12px 8px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    text-align: center;
+    transition: transform .2s, background .3s;
+  }
+  .hour-card:active { transform: scale(0.96); }
+  .hour-card.now {
+    background: linear-gradient(135deg, rgba(56,189,248,0.30), rgba(99,102,241,0.30));
+    border-color: rgba(255,255,255,0.35);
+    box-shadow: 0 6px 20px rgba(99,102,241,0.3);
+  }
+
+  .hour-time {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .hour-icon {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .hour-temp {
+    font-size: 15px;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+  }
+
+  /* ============================================================
+     GÜNLÜK TAHMİN
+  ============================================================ */
+  .daily-list {
+    display: grid;
+    gap: 8px;
+    animation: fadeUp .8s .4s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .day-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 12px 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: grid;
+    grid-template-columns: 70px 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    transition: transform .2s, background .3s;
+  }
+  .day-card:active { transform: scale(0.98); }
+
+  .day-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: capitalize;
+  }
+  .day-name.today { color: var(--text); }
+
+  .day-icon { font-size: 24px; text-align: center; }
+
+  .day-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .day-min, .day-max {
+    font-size: 13px;
+    font-weight: 700;
+    font-feature-settings: "tnum";
+    min-width: 30px;
+  }
+  .day-min { color: var(--text-mute); }
+  .day-max { color: var(--text); text-align: right; }
+
+  .day-bar {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.15);
+    position: relative;
+    overflow: hidden;
+    min-width: 40px;
+  }
+  .day-bar-fill {
+    position: absolute;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #38bdf8, #f59e0b, #ef4444);
+    transition: left .8s cubic-bezier(.2,.8,.2,1), width .8s cubic-bezier(.2,.8,.2,1);
+  }
+
+  /* ============================================================
+     YÜKLENİYOR / HATA
+  ============================================================ */
+  .loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 16px;
+    animation: fadeUp .5s;
+  }
+
+  .loader-spinner {
+    width: 46px;
+    height: 46px;
+    border: 3px solid rgba(255,255,255,0.15);
+    border-top-color: #38bdf8;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .error-box {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.35);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+    font-size: 13.5px;
+    color: #fecaca;
+    font-weight: 500;
+  }
+
+  /* Gizle / göster */
+  .hidden { display: none !important; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--text-mute);
+    padding: 20px 0 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .footer a {
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+</style>
+</head>
+<body data-weather="clear-day">
+
+<div id="bg"></div>
+
+<header>
+  <div class="brand">
+    <div class="logo">☁</div>
+    <span>Hava</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="locBtn" title="Konumumu kullan">📍</button>
+  <button class="icon-btn" id="refreshBtn" title="Yenile">🔄</button>
+</header>
+
+<main>
+
+  <!-- ARAMA -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input
+      type="text"
+      class="search-input"
+      id="cityInput"
+      placeholder="Şehir ara..."
+      autocomplete="off"
+    >
+    <button class="search-btn" id="searchBtn">↵</button>
+    <div class="suggestions" id="suggestions"></div>
+  </div>
+
+  <!-- YÜKLENİYOR -->
+  <div class="loader" id="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Hava durumu yükleniyor...</div>
+  </div>
+
+  <!-- HATA -->
+  <div class="error-box hidden" id="errorBox"></div>
+
+  <!-- İÇERİK -->
+  <div id="content" class="hidden">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="location">
+        <span class="pin">📍</span>
+        <span id="locationName">—</span>
+      </div>
+      <div class="time-now" id="timeNow">—</div>
+      <div class="weather-icon-big" id="weatherIcon">☀️</div>
+      <div class="temp-big"><span id="tempValue">--</span><span class="deg">°</span></div>
+      <div class="condition-text" id="conditionText">—</div>
+      <div class="feels-like" id="feelsLike">—</div>
+    </section>
+
+    <!-- DETAYLAR -->
+    <section class="details">
+      <div class="detail-card">
+        <div class="detail-icon">💧</div>
+        <div class="detail-info">
+          <div class="detail-label">Nem</div>
+          <div class="detail-value" id="humidity">—</div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-icon">💨</div>
+        <div class="detail-info">
+          <div class="detail-label">Rüzgar</div>
+          <div class="detail-value" id="wind">—</div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-icon">☀️</div>
+        <div class="detail-info">
+          <div class="detail-label">UV İndeksi</div>
+          <div class="detail-value" id="uv">—</div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-icon">🌡️</div>
+        <div class="detail-info">
+          <div class="detail-label">Basınç</div>
+          <div class="detail-value" id="pressure">—</div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-icon">🌅</div>
+        <div class="detail-info">
+          <div class="detail-label">Gün Doğumu</div>
+          <div class="detail-value" id="sunrise">—</div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-icon">🌇</div>
+        <div class="detail-info">
+          <div class="detail-label">Gün Batımı</div>
+          <div class="detail-value" id="sunset">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SAATLİK -->
+    <div class="section-title">Saatlik Tahmin</div>
+    <div class="hourly-scroll" id="hourly"></div>
+
+    <!-- GÜNLÜK -->
+    <div class="section-title">7 Günlük Tahmin</div>
+    <div class="daily-list" id="daily"></div>
+
+    <div class="footer">Open-Meteo API • PWA</div>
+
+  </div>
+
+</main>
+
+<script>
+/* ============================================================
+   YARDIMCILAR
+============================================================ */
+const $ = (s) => document.querySelector(s);
+const el = {
+  loader: $('#loader'),
+  errorBox: $('#errorBox'),
+  content: $('#content'),
+  cityInput: $('#cityInput'),
+  suggestions: $('#suggestions'),
+  locationName: $('#locationName'),
+  timeNow: $('#timeNow'),
+  weatherIcon: $('#weatherIcon'),
+  tempValue: $('#tempValue'),
+  conditionText: $('#conditionText'),
+  feelsLike: $('#feelsLike'),
+  humidity: $('#humidity'),
+  wind: $('#wind'),
+  uv: $('#uv'),
+  pressure: $('#pressure'),
+  sunrise: $('#sunrise'),
+  sunset: $('#sunset'),
+  hourly: $('#hourly'),
+  daily: $('#daily'),
+};
+
+/* ============================================================
+   HAVA DURUMU KODU → AÇIKLAMA + İKON + TEMA
+============================================================ */
+const WEATHER_MAP = {
+  0:  { text: 'Açık',               icon: '☀️', theme: 'clear' },
+  1:  { text: 'Az Bulutlu',         icon: '🌤️', theme: 'clear' },
+  2:  { text: 'Parçalı Bulutlu',    icon: '⛅', theme: 'cloudy' },
+  3:  { text: 'Kapalı',             icon: '☁️', theme: 'cloudy' },
+  45: { text: 'Sisli',              icon: '🌫️', theme: 'fog' },
+  48: { text: 'Kırağılı Sis',       icon: '🌫️', theme: 'fog' },
+  51: { text: 'Hafif Çisenti',      icon: '🌦️', theme: 'rain' },
+  53: { text: 'Çisenti',            icon: '🌦️', theme: 'rain' },
+  55: { text: 'Yoğun Çisenti',      icon: '🌧️', theme: 'rain' },
+  56: { text: 'Dondurucu Çisenti',  icon: '🌧️', theme: 'rain' },
+  57: { text: 'Dondurucu Çisenti',  icon: '🌧️', theme: 'rain' },
+  61: { text: 'Hafif Yağmur',       icon: '🌧️', theme: 'rain' },
+  63: { text: 'Yağmurlu',           icon: '🌧️', theme: 'rain' },
+  65: { text: 'Şiddetli Yağmur',    icon: '⛈️', theme: 'rain' },
+  66: { text: 'Dondurucu Yağmur',   icon: '🌧️', theme: 'rain' },
+  67: { text: 'Dondurucu Yağmur',   icon: '🌧️', theme: 'rain' },
+  71: { text: 'Hafif Kar',          icon: '🌨️', theme: 'snow' },
+  73: { text: 'Kar Yağışlı',        icon: '❄️', theme: 'snow' },
+  75:
